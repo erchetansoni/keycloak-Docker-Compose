@@ -1,2 +1,5 @@
 # ignore logs folder
 /logs
+
+# Environment variables
+.env

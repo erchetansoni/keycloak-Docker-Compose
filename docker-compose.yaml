@@ -13,6 +13,29 @@ volumes:
   postgres_data:
 
 services:
+  traefik:
+    <<: *default-logging
+    image: traefik:v3.7.16
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - //var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yaml:/etc/traefik/traefik.yaml:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      - ./traefik/certs:/certs:ro
+    networks:
+      - keycloak_network
+    labels:
+      - "traefik.enable=true"
+      # Dashboard Router (HTTPS)
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`proxy.chetan.com`)"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.traefik-dashboard.tls=true"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+
   postgres:
     <<: *default-logging
     image: docker.io/postgres:18.6-alpine3.24
@@ -37,7 +60,7 @@ services:
     <<: *default-logging
     image: quay.io/keycloak/keycloak:26.8.1
     container_name: keycloak
-    command: start-dev
+    command: start
     volumes:
       - ./conf/keycloak.conf:/opt/keycloak/conf/keycloak.conf:ro
       - ./logs:/opt/keycloak/data/log
@@ -45,8 +68,6 @@ services:
       # Initial Admin Credentials
       KC_BOOTSTRAP_ADMIN_USERNAME: "${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}"
       KC_BOOTSTRAP_ADMIN_PASSWORD: "${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}"
-    ports:
-      - "${KEYCLOAK_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,6 +80,13 @@ services:
     networks:
       - keycloak_network
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      # Keycloak Router (HTTPS)
+      - "traefik.http.routers.keycloak.rule=Host(`auth.chetan.com`)"
+      - "traefik.http.routers.keycloak.entrypoints=websecure"
+      - "traefik.http.routers.keycloak.tls=true"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
 
   httpd:
     <<: *default-logging
@@ -72,29 +100,10 @@ services:
     <<: *default-logging
     image: quay.io/oauth2-proxy/oauth2-proxy:v7.8.1
     container_name: test_oauth2_proxy
-    ports:
-      - "${OAUTH2_PROXY_PORT:-4180}:4180"
-
-    # If Custom Login Screen required (only works if, OAUTH2_PROXY_SKIP_PROVIDER_BUTTON=false)
-    volumes:
-      - ./oauth2_proxy/custom-templates:/opt/templates:ro
-
     environment:
-      # Custom title and branding text
-      OAUTH2_PROXY_PROVIDER_DISPLAY_NAME: "${OAUTH2_PROXY_PROVIDER_DISPLAY_NAME:-Enterprise SSO}"
-      OAUTH2_PROXY_BANNER: "${OAUTH2_PROXY_BANNER:-Authorized Personnel Only - Acme Corp}"
-      OAUTH2_PROXY_FOOTER: "${OAUTH2_PROXY_FOOTER:-For support, contact it-support@corp.internal}"
-
-      # Skip the OAuth2 Proxy Screen Entirely (Direct Keycloak/IdP Login)
-      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "${OAUTH2_PROXY_SKIP_PROVIDER_BUTTON:-true}"
-
-      # If Custom Login screen is required (only works if, OAUTH2_PROXY_SKIP_PROVIDER_BUTTON=false)
-      OAUTH2_PROXY_CUSTOM_TEMPLATES_DIR: /opt/templates
-
-      # OAuth2 Proxy Configuration
       OAUTH2_PROXY_PROVIDER: "${OAUTH2_PROXY_PROVIDER:-keycloak-oidc}"
-      OAUTH2_PROXY_OIDC_ISSUER_URL: "${OAUTH2_PROXY_OIDC_ISSUER_URL:-http://localhost:8080/realms/corp}"
-      OAUTH2_PROXY_LOGIN_URL: "${OAUTH2_PROXY_LOGIN_URL:-http://localhost:8080/realms/corp/protocol/openid-connect/auth}"
+      OAUTH2_PROXY_OIDC_ISSUER_URL: "${OAUTH2_PROXY_OIDC_ISSUER_URL:-https://auth.chetan.com/realms/corp}"
+      OAUTH2_PROXY_LOGIN_URL: "${OAUTH2_PROXY_LOGIN_URL:-https://auth.chetan.com/realms/corp/protocol/openid-connect/auth}"
       OAUTH2_PROXY_REDEEM_URL: "${OAUTH2_PROXY_REDEEM_URL:-http://keycloak:8080/realms/corp/protocol/openid-connect/token}"
       OAUTH2_PROXY_VALIDATE_URL: "${OAUTH2_PROXY_VALIDATE_URL:-http://keycloak:8080/realms/corp/protocol/openid-connect/userinfo}"
       OAUTH2_PROXY_OIDC_JWKS_URL: "${OAUTH2_PROXY_OIDC_JWKS_URL:-http://keycloak:8080/realms/corp/protocol/openid-connect/certs}"
@@ -104,11 +113,12 @@ services:
       OAUTH2_PROXY_COOKIE_SECRET: "${OAUTH2_PROXY_COOKIE_SECRET:-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}"
       OAUTH2_PROXY_UPSTREAMS: "${OAUTH2_PROXY_UPSTREAMS:-http://httpd:80}"
       OAUTH2_PROXY_HTTP_ADDRESS: "${OAUTH2_PROXY_HTTP_ADDRESS:-0.0.0.0:4180}"
-      OAUTH2_PROXY_REDIRECT_URL: "${OAUTH2_PROXY_REDIRECT_URL:-http://localhost:4180/oauth2/callback}"
+      OAUTH2_PROXY_REDIRECT_URL: "${OAUTH2_PROXY_REDIRECT_URL:-https://app.chetan.com/oauth2/callback}"
       OAUTH2_PROXY_EMAIL_DOMAINS: "${OAUTH2_PROXY_EMAIL_DOMAINS:-*}"
       OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL: "${OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL:-true}"
-      OAUTH2_PROXY_COOKIE_SECURE: "${OAUTH2_PROXY_COOKIE_SECURE:-false}"
+      OAUTH2_PROXY_COOKIE_SECURE: "${OAUTH2_PROXY_COOKIE_SECURE:-true}"
       OAUTH2_PROXY_REVERSE_PROXY: "${OAUTH2_PROXY_REVERSE_PROXY:-true}"
+      OAUTH2_PROXY_SSL_INSECURE_SKIP_VERIFY: "true"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -119,3 +129,10 @@ services:
     networks:
       - keycloak_network
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      # App Router (HTTPS via OAuth2-Proxy)
+      - "traefik.http.routers.app.rule=Host(`app.chetan.com`)"
+      - "traefik.http.routers.app.entrypoints=websecure"
+      - "traefik.http.routers.app.tls=true"
+      - "traefik.http.services.app.loadbalancer.server.port=4180"

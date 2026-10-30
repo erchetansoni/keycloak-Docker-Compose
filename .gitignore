@@ -3,3 +3,9 @@
 
 # Environment variables
 .env
+
+# Certificates & Private Key
+/traefik/certs/*
+
+# Do not ignore the .gitkeep file
+!/traefik/certs/.gitkeep

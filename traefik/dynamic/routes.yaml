@@ -1,0 +1,34 @@
+http:
+  routers:
+    traefik-dashboard:
+      rule: "Host(`proxy.chetan.com`)"
+      entryPoints:
+        - "websecure"
+      service: "api@internal"
+      tls: {}
+
+    keycloak:
+      rule: "Host(`auth.chetan.com`)"
+      entryPoints:
+        - "websecure"
+      service: "keycloak-service"
+      tls: {}
+
+    app:
+      rule: "Host(`app.chetan.com`)"
+      entryPoints:
+        - "websecure"
+      service: "app-service"
+      tls: {}
+
+  services:
+    keycloak-service:
+      loadBalancer:
+        servers:
+          - url: "http://keycloak:8080"
+
+    app-service:
+      loadBalancer:
+        servers:
+          - url: "http://oauth2-proxy:4180"
+

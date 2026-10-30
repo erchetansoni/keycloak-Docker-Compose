@@ -1,0 +1,12 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com for more hooks
+repos:
+  - repo: https://github.com
+    rev: v4.7.0  # Use the latest version available
+    hooks:
+      - id: mixed-line-ending
+        args: ['--fix=lf'] # Automatically forces LF line endings
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files

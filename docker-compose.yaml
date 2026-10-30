@@ -76,20 +76,19 @@ services:
       - "4180:4180"
     environment:
       OAUTH2_PROXY_PROVIDER: keycloak-oidc
-      OAUTH2_PROXY_OIDC_ISSUER_URL: http://localhost:8080/realms/demo
-      OAUTH2_PROXY_LOGIN_URL: http://localhost:8080/realms/demo/protocol/openid-connect/auth
-      OAUTH2_PROXY_REDEEM_URL: http://keycloak:8080/realms/demo/protocol/openid-connect/token
-      OAUTH2_PROXY_VALIDATE_URL: http://keycloak:8080/realms/demo/protocol/openid-connect/userinfo
-      OAUTH2_PROXY_OIDC_JWKS_URL: http://keycloak:8080/realms/demo/protocol/openid-connect/certs
+      OAUTH2_PROXY_OIDC_ISSUER_URL: http://localhost:8080/realms/corp
+      OAUTH2_PROXY_LOGIN_URL: http://localhost:8080/realms/corp/protocol/openid-connect/auth
+      OAUTH2_PROXY_REDEEM_URL: http://keycloak:8080/realms/corp/protocol/openid-connect/token
+      OAUTH2_PROXY_VALIDATE_URL: http://keycloak:8080/realms/corp/protocol/openid-connect/userinfo
+      OAUTH2_PROXY_OIDC_JWKS_URL: http://keycloak:8080/realms/corp/protocol/openid-connect/certs
       OAUTH2_PROXY_SKIP_OIDC_DISCOVERY: "true"
-      OAUTH2_PROXY_CLIENT_ID: demo-app
-      OAUTH2_PROXY_CLIENT_SECRET: demo-secret
+      OAUTH2_PROXY_CLIENT_ID: portal-web-gateway
+      OAUTH2_PROXY_CLIENT_SECRET: portal-gateway-secret-2026
       OAUTH2_PROXY_COOKIE_SECRET: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
       OAUTH2_PROXY_UPSTREAMS: http://httpd:80
       OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
       OAUTH2_PROXY_REDIRECT_URL: http://localhost:4180/oauth2/callback
       OAUTH2_PROXY_EMAIL_DOMAINS: "*"
-      OAUTH2_PROXY_OIDC_EXTRA_AUDIENCE: "account"
       OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL: "true"
       OAUTH2_PROXY_COOKIE_SECURE: "false"
       OAUTH2_PROXY_REVERSE_PROXY: "true"

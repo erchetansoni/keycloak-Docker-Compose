@@ -19,7 +19,7 @@ services:
     container_name: keycloak_postgres
     environment:
       POSTGRES_DB: "${POSTGRES_DB:-keycloak}"
-      POSTGRES_USER: "${POSTGRES_user:-keycloak}"
+      POSTGRES_USER: "${POSTGRES_USER:-keycloak}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-password}"
     volumes:
       - postgres_data:/var/lib/postgresql
@@ -43,10 +43,10 @@ services:
       - ./logs:/opt/keycloak/data/log
     environment:
       # Initial Admin Credentials
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}
+      KC_BOOTSTRAP_ADMIN_USERNAME: "${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}"
+      KC_BOOTSTRAP_ADMIN_PASSWORD: "${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}"
     ports:
-      - "8080:8080"
+      - "${KEYCLOAK_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -73,25 +73,25 @@ services:
     image: quay.io/oauth2-proxy/oauth2-proxy:v7.8.1
     container_name: test_oauth2_proxy
     ports:
-      - "4180:4180"
+      - "${OAUTH2_PROXY_PORT:-4180}:4180"
     environment:
-      OAUTH2_PROXY_PROVIDER: keycloak-oidc
-      OAUTH2_PROXY_OIDC_ISSUER_URL: http://localhost:8080/realms/corp
-      OAUTH2_PROXY_LOGIN_URL: http://localhost:8080/realms/corp/protocol/openid-connect/auth
-      OAUTH2_PROXY_REDEEM_URL: http://keycloak:8080/realms/corp/protocol/openid-connect/token
-      OAUTH2_PROXY_VALIDATE_URL: http://keycloak:8080/realms/corp/protocol/openid-connect/userinfo
-      OAUTH2_PROXY_OIDC_JWKS_URL: http://keycloak:8080/realms/corp/protocol/openid-connect/certs
-      OAUTH2_PROXY_SKIP_OIDC_DISCOVERY: "true"
-      OAUTH2_PROXY_CLIENT_ID: portal-web-gateway
-      OAUTH2_PROXY_CLIENT_SECRET: portal-gateway-secret-2026
-      OAUTH2_PROXY_COOKIE_SECRET: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-      OAUTH2_PROXY_UPSTREAMS: http://httpd:80
-      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
-      OAUTH2_PROXY_REDIRECT_URL: http://localhost:4180/oauth2/callback
-      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
-      OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL: "true"
-      OAUTH2_PROXY_COOKIE_SECURE: "false"
-      OAUTH2_PROXY_REVERSE_PROXY: "true"
+      OAUTH2_PROXY_PROVIDER: "${OAUTH2_PROXY_PROVIDER:-keycloak-oidc}"
+      OAUTH2_PROXY_OIDC_ISSUER_URL: "${OAUTH2_PROXY_OIDC_ISSUER_URL:-http://localhost:8080/realms/corp}"
+      OAUTH2_PROXY_LOGIN_URL: "${OAUTH2_PROXY_LOGIN_URL:-http://localhost:8080/realms/corp/protocol/openid-connect/auth}"
+      OAUTH2_PROXY_REDEEM_URL: "${OAUTH2_PROXY_REDEEM_URL:-http://keycloak:8080/realms/corp/protocol/openid-connect/token}"
+      OAUTH2_PROXY_VALIDATE_URL: "${OAUTH2_PROXY_VALIDATE_URL:-http://keycloak:8080/realms/corp/protocol/openid-connect/userinfo}"
+      OAUTH2_PROXY_OIDC_JWKS_URL: "${OAUTH2_PROXY_OIDC_JWKS_URL:-http://keycloak:8080/realms/corp/protocol/openid-connect/certs}"
+      OAUTH2_PROXY_SKIP_OIDC_DISCOVERY: "${OAUTH2_PROXY_SKIP_OIDC_DISCOVERY:-true}"
+      OAUTH2_PROXY_CLIENT_ID: "${OAUTH2_PROXY_CLIENT_ID:-portal-web-gateway}"
+      OAUTH2_PROXY_CLIENT_SECRET: "${OAUTH2_PROXY_CLIENT_SECRET:-portal-gateway-secret-2026}"
+      OAUTH2_PROXY_COOKIE_SECRET: "${OAUTH2_PROXY_COOKIE_SECRET:-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}"
+      OAUTH2_PROXY_UPSTREAMS: "${OAUTH2_PROXY_UPSTREAMS:-http://httpd:80}"
+      OAUTH2_PROXY_HTTP_ADDRESS: "${OAUTH2_PROXY_HTTP_ADDRESS:-0.0.0.0:4180}"
+      OAUTH2_PROXY_REDIRECT_URL: "${OAUTH2_PROXY_REDIRECT_URL:-http://localhost:4180/oauth2/callback}"
+      OAUTH2_PROXY_EMAIL_DOMAINS: "${OAUTH2_PROXY_EMAIL_DOMAINS:-*}"
+      OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL: "${OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL:-true}"
+      OAUTH2_PROXY_COOKIE_SECURE: "${OAUTH2_PROXY_COOKIE_SECURE:-false}"
+      OAUTH2_PROXY_REVERSE_PROXY: "${OAUTH2_PROXY_REVERSE_PROXY:-true}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

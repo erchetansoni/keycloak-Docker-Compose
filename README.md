@@ -16,7 +16,7 @@ This architecture demonstrates a Zero-Trust forward authentication gateway: all 
             ▼                                     ▼
    ┌─────────────────────────────────────────────────────────┐
    │                       Traefik v3                        │
-   │  (TLS Termination, HTTP->HTTPS Redirection, API Router)  │
+   │  (TLS Termination, HTTP->HTTPS Redirection, API Router) │
    └────────┬─────────────────────┬─────────────────┬────────┘
             │                     │                 │
  https://proxy.chetan.com         │        https://app.chetan.com
@@ -53,6 +53,8 @@ KeyCloak-Docker-Compose/
 ├── keycloak/
 │   ├── conf/
 │   │   └── keycloak.conf            # Native Keycloak configuration (DB, Hostname, Logging)
+│   ├── import/
+│   │   └── corp-realm.json          # Automated Day-0 Realm configuration (Client, Mappers, Users)
 │   └── logs/
 │       └── keycloak.log             # Rotated physical log files (10MB max, 5 backups)
 ├── oauth2_proxy/
@@ -93,19 +95,98 @@ Ensure the following domains resolve to `127.0.0.1` in your local `hosts` file (
 
 ---
 
-## Quick Start
+## Day-0 Workflow: Automated vs Manual
 
-### 1. Prerequisites
-- Docker & Docker Compose v2+
-- Wildcard certificates placed inside `traefik/certs/` (or update `traefik/dynamic/tls.yaml`)
-- Host file entries added for the domains above
+### Option A: Fully Automated Day-0 Startup (Zero Manual Config)
 
-### 2. Start the Stack
+This repository includes a pre-exported realm definition at [`keycloak/import/corp-realm.json`](keycloak/import/corp-realm.json). 
+
+Keycloak runs with `command: start --import-realm` and mounts `./keycloak/import:/opt/keycloak/data/import:ro`. 
+
+On the very first launch (`docker compose up -d`), Keycloak **automatically provisions**:
+1. The **`corp`** realm.
+2. The **`portal-web-gateway`** client (with client secret `portal-gateway-secret-2026`).
+3. The **Audience protocol mapper** (`aud: portal-web-gateway`).
+4. The test user **`john.doe`** (with pre-set password `SecurePass2026!`).
+
+> [!NOTE]
+> If the database already exists, Keycloak skips the import to preserve existing state and modifications.
+
+---
+
+### Option B: Manual Step-by-Step Configuration (If Starting Fresh)
+
+If you wipe your database volume or choose to build the realm by hand from scratch, follow this exact workflow:
+
+#### Step 1: Log in to the Admin Console
+1. Open **`https://auth.chetan.com/admin`**.
+2. Log in with the master bootstrap credentials (`admin` / `admin`).
+
+#### Step 2: Create the Enterprise Realm
+1. Click the top-left dropdown (currently `master`).
+2. Click **Create Realm**.
+3. Set **Realm name**: `corp`
+4. Set **Display name**: `Enterprise Portal`
+5. Click **Create**.
+
+#### Step 3: Create the OIDC Client (`portal-web-gateway`)
+1. In the `corp` realm, click **Clients** $\rightarrow$ **Create client**.
+2. **General Settings**:
+   - **Client type**: `OpenID Connect`
+   - **Client ID**: `portal-web-gateway`
+   - Click **Next**.
+3. **Capability Config**:
+   - **Client authentication**: `ON` *(Confidential client)*
+   - **Standard flow**: `ON` *(Authorization Code Flow)*
+   - **Direct access grants**: `OFF`
+   - Click **Next**.
+4. **Login Settings**:
+   - **Root URL**: `https://app.chetan.com`
+   - **Valid redirect URIs**: `https://app.chetan.com/*`
+   - **Web origins**: `+`
+   - Click **Save**.
+5. **Credentials Tab**:
+   - Under **Client Secret**, copy the generated secret (or set it to `portal-gateway-secret-2026`).
+   - If changed, update `OAUTH2_PROXY_CLIENT_SECRET` in `docker-compose.yaml` (or `.env`).
+
+#### Step 4: Add the Audience Protocol Mapper (CRITICAL)
+Without this, OAuth2 Proxy will fail with `audience does not match`:
+1. In the `portal-web-gateway` client, click the **Client scopes** tab.
+2. Click the link for **`portal-web-gateway-dedicated`**.
+3. Click **Configure a new mapper** (or **Add mapper** $\rightarrow$ **By configuration**).
+4. Select **Audience**.
+5. Configure:
+   - **Name**: `portal-gateway-audience`
+   - **Included Client Audience**: `portal-web-gateway`
+   - **Add to ID token**: `ON`
+   - **Add to access token**: `ON`
+6. Click **Save**.
+
+#### Step 5: Create a Test User
+1. In the `corp` realm, click **Users** $\rightarrow$ **Add user**.
+2. Enter:
+   - **Username**: `john.doe`
+   - **Email**: `john.doe@corp.internal`
+   - **Email verified**: `ON`
+   - **First name**: `John`
+   - **Last name**: `Doe`
+3. Click **Create**.
+4. Switch to the **Credentials** tab:
+   - Click **Set password**.
+   - **Password**: `SecurePass2026!`
+   - **Temporary**: `OFF`
+   - Click **Save** $\rightarrow$ **Save password**.
+
+---
+
+## Quick Start Commands
+
+### 1. Start the Stack
 ```powershell
 docker compose up -d
 ```
 
-### 3. Check Service Status
+### 2. Check Service Status
 ```powershell
 docker compose ps
 ```
@@ -206,6 +287,4 @@ Get-Content ./keycloak/logs/keycloak.log -Wait -Tail 50
 1. **Certificate Warnings in Browser**:
    Because certificates in `traefik/certs/` are self-signed, click **Advanced** $\rightarrow$ **Proceed to site** in Chrome/Edge.
 2. **Audience Mismatch (`aud` claim)**:
-   Keycloak tokens must contain the client audience (`portal-web-gateway`). This is configured in Keycloak under:
-   `Clients` $\rightarrow$ `portal-web-gateway` $\rightarrow$ `Client scopes` $\rightarrow$ `dedicated` $\rightarrow$ `Mappers` $\rightarrow$ `Audience`.
-
+   Keycloak tokens must contain the client audience (`portal-web-gateway`). Ensure the audience mapper is attached to the client scopes.

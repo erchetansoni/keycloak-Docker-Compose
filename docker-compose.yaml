@@ -63,10 +63,11 @@ services:
     image: quay.io/keycloak/keycloak:26.8.1
     container_name: keycloak
     hostname: keycloak
-    command: start
+    command: start --import-realm
     volumes:
       - ./keycloak/conf/keycloak.conf:/opt/keycloak/conf/keycloak.conf:ro
       - ./keycloak/logs:/opt/keycloak/data/log
+      - ./keycloak/import:/opt/keycloak/data/import:ro
     environment:
       # Initial Admin Credentials
       KC_BOOTSTRAP_ADMIN_USERNAME: "${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}"

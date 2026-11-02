@@ -113,8 +113,8 @@ All containers should report `Up` or `Up (healthy)`:
 - `traefik`
 - `keycloak_postgres`
 - `keycloak`
-- `test_oauth2_proxy`
-- `test_httpd`
+- `oauth2_proxy`
+- `httpd`
 
 ---
 

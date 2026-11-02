@@ -62,8 +62,8 @@ services:
     container_name: keycloak
     command: start
     volumes:
-      - ./conf/keycloak.conf:/opt/keycloak/conf/keycloak.conf:ro
-      - ./logs:/opt/keycloak/data/log
+      - ./keycloak/conf/keycloak.conf:/opt/keycloak/conf/keycloak.conf:ro
+      - ./keycloak/logs:/opt/keycloak/data/log
     environment:
       # Initial Admin Credentials
       KC_BOOTSTRAP_ADMIN_USERNAME: "${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}"
@@ -90,7 +90,7 @@ services:
 
   httpd:
     <<: *default-logging
-    image: httpd:2.4-alpine
+    image: traefik/whoami:latest # instead you can also use this image: "httpd:2.4-alpine"
     container_name: test_httpd
     networks:
       - keycloak_network
@@ -100,7 +100,26 @@ services:
     <<: *default-logging
     image: quay.io/oauth2-proxy/oauth2-proxy:v7.8.1
     container_name: test_oauth2_proxy
+    # ports:
+    #   - "${OAUTH2_PROXY_PORT:-4180}:4180"
+
+    # If Custom Login Screen required (only works if, OAUTH2_PROXY_SKIP_PROVIDER_BUTTON=false)
+    volumes:
+      - ./oauth2_proxy/custom-templates:/opt/templates:ro
+
     environment:
+      # Custom title and branding text
+      OAUTH2_PROXY_PROVIDER_DISPLAY_NAME: "${OAUTH2_PROXY_PROVIDER_DISPLAY_NAME:-Enterprise SSO}"
+      OAUTH2_PROXY_BANNER: "${OAUTH2_PROXY_BANNER:-Authorized Personnel Only - Acme Corp}"
+      OAUTH2_PROXY_FOOTER: "${OAUTH2_PROXY_FOOTER:-For support, contact it-support@corp.internal}"
+
+      # Skip the OAuth2 Proxy Screen Entirely (Direct Keycloak/IdP Login)
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "${OAUTH2_PROXY_SKIP_PROVIDER_BUTTON:-true}"
+
+      # If Custom Login screen is required (only works if, OAUTH2_PROXY_SKIP_PROVIDER_BUTTON=false)
+      OAUTH2_PROXY_CUSTOM_TEMPLATES_DIR: /opt/templates
+
+      # OAuth2 Proxy Configuration
       OAUTH2_PROXY_PROVIDER: "${OAUTH2_PROXY_PROVIDER:-keycloak-oidc}"
       OAUTH2_PROXY_OIDC_ISSUER_URL: "${OAUTH2_PROXY_OIDC_ISSUER_URL:-https://auth.chetan.com/realms/corp}"
       OAUTH2_PROXY_LOGIN_URL: "${OAUTH2_PROXY_LOGIN_URL:-https://auth.chetan.com/realms/corp/protocol/openid-connect/auth}"

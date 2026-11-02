@@ -1,5 +1,6 @@
-# ignore logs folder
+# ignore logs folders
 /logs
+/keycloak/logs
 
 # Environment variables
 .env
